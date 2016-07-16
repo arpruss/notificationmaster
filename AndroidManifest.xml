@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application android:label="NotifyMaster">
-        <activity android:name=".NotifyMasterActivity"
+        <activity android:name=".Apps"
                   android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
                   android:launchMode="singleTask">
             <intent-filter>

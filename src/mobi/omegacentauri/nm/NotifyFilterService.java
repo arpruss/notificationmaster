@@ -1,6 +1,9 @@
 package mobi.omegacentauri.nm;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,28 +19,51 @@ import android.util.Log;
 import android.widget.RemoteViews;
 
 public class NotifyFilterService extends NotificationListenerService {
-	static String[][] notificationFilter = {
-		{"com.android.mms", "arp:siren", "siren"}, // testing
-		{"com.htc.sense.mms", "arp:siren", "siren"}, // testing
-		{"com.htc.sense.mms", "arp:novibrate", "novibrate"}, // testing
-		{"com.htc.sense.mms", "arp:silent", "disable"}, // testing
-		{"com.accuweather.android", "tornado warning", "siren"},
-		{"com.accuweather.android", "tornado", "enable"},
-		{"com.accuweather.android", "flood", "disable"},
-		{"jp.co.johospace.jorte", "you have no events for today", "disable"},
-		{"jp.co.johospace.jorte", "events for today", "novibrate"},
-	};
+	Map<String, NotificationFilter[]> filters = new HashMap<String, NotificationFilter[]>();
 	Map<String,ToneGenerator> tones = new HashMap<String,ToneGenerator>();
 	Integer key = 1;
-	
-	 @Override
-	 public void onCreate() {
-		 super.onCreate();
-		 Log.v("nm", "Created");
-	 }
-	
-	private String notificationFilter(String pkg, Notification n) {
+
+	@Override
+	public void onCreate() {
+		super.onCreate();
+		Log.v("nm", "Created");
+
+		filters.put("com.android.mms",
+				new NotificationFilter[] { 
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "arp:siren", NotificationFilter.ACTION_SIREN) 
+		});
+		filters.put("com.htc.sense.mms",
+				new NotificationFilter[] { 
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "arp:siren", NotificationFilter.ACTION_SIREN),
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "arp:novibrate", NotificationFilter.ACTION_NOVIBRATE),
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "arp:cancel", NotificationFilter.ACTION_CANCEL)
+		});
+		filters.put("com.accuweather.android",
+				new NotificationFilter[] { 
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "tornado warning", 
+						NotificationFilter.ACTION_SIREN | NotificationFilter.ACTION_VIBRATE | NotificationFilter.ACTION_LIGHTS |
+						NotificationFilter.ACTION_NOSOUND),
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "tornado", 
+						NotificationFilter.ACTION_UNCHANGED),
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "flood", 
+						NotificationFilter.ACTION_CANCEL)
+		});
+		filters.put("jp.co.johospace.jorte",
+				new NotificationFilter[] { 
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, 
+						"you have no events for today", NotificationFilter.ACTION_CANCEL),
+						new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, 
+								"events for today", NotificationFilter.ACTION_NOVIBRATE)
+		});
+
+	}
+
+	private int getAction(String pkg, Notification n) {
 		StringBuilder data = new StringBuilder();
+
+		NotificationFilter[] filterArray = filters.get(pkg);
+		if (filterArray == null)
+			return NotificationFilter.ACTION_UNCHANGED;
 
 		if (n.tickerText != null) {
 			data.append(n.tickerText);
@@ -69,7 +95,7 @@ public class NotifyFilterService extends NotificationListenerService {
 							if (t == 9 || t == 10) {
 								Field value = actionClass.getDeclaredField("value");
 								value.setAccessible(true);
-								data.append("\n");
+								data.append(" ");
 								data.append(value.get(action).toString());
 							}
 						}
@@ -80,27 +106,25 @@ public class NotifyFilterService extends NotificationListenerService {
 				}
 			}
 		}
-		
+
 		if (n.actions != null) {
 			for (Notification.Action action : n.actions) {
-                if (action.title != null) {
-                    data.append("\n");
-                    data.append(action.title);
-                }
+				if (action.title != null) {
+					data.append(" ");
+					data.append(action.title);
+				}
 			}
 		}
-		
-		String text = data.toString().toLowerCase();
-		
-		Log.v("nm","examining notification: "+text);
-		
-		for (String[] line : notificationFilter){
-			if (line[0].equals(pkg) && text.contains(line[1]))
-				return line[2];
-		} 
-		return null;
+
+		String text = data.toString().replaceAll("\\s+", " ").toLowerCase();
+
+		for (NotificationFilter f : filterArray) 
+			if (f.match(text))
+				return f.action;
+
+		return NotificationFilter.ACTION_UNCHANGED;
 	}	
-	
+
 	synchronized private void removeTone(String key) {
 		ToneGenerator tg = tones.get(key);
 		if (tg == null)
@@ -111,9 +135,9 @@ public class NotifyFilterService extends NotificationListenerService {
 		tones.remove(key);
 
 	}
-    
-    private void addTone(final String key, final int tone, final int length) {
-        new Thread(new Runnable(){
+
+	private void addTone(final String key, final int tone, final int length) {
+		new Thread(new Runnable(){
 			@Override
 			public void run() {
 				AudioManager am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
@@ -129,49 +153,103 @@ public class NotifyFilterService extends NotificationListenerService {
 				NotifyFilterService.this.removeTone(key);
 				am.setStreamVolume(AudioManager.STREAM_NOTIFICATION, oldVolume, 0);
 			}}).start();
-    }
-    
+	}
+
 	@Override
-    public void onNotificationPosted(StatusBarNotification sbn) {
+	public void onNotificationPosted(StatusBarNotification sbn) {
 		String packageName = sbn.getPackageName();
 		if (packageName == null || packageName.equals(getPackageName()))
 			return;
-    	Notification n = sbn.getNotification();
-    	if (n == null)
-    		return;
-		String f = notificationFilter(packageName, n);
-		Log.v("nm", sbn.getPackageName()+" "+f);
-		if (f != null) {
-			if (f == "disable") {
-				cancelNotification(sbn.getKey());
-			}
-			else if (f == "novibrate") {
-				cancelNotification(sbn.getKey());
-				n.defaults &= ~Notification.DEFAULT_VIBRATE;
-				n.vibrate = null;
-				NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-				synchronized(key) {
-					nm.notify(key++, n);
-				}
-			}
-			else if (f == "vibrate") {
-				cancelNotification(sbn.getKey());
-				n.defaults |= Notification.DEFAULT_VIBRATE;
-				n.vibrate = null;
-				NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-				synchronized(key) {
-					nm.notify(key++, n);
-				}
-			}
-			else if (f == "siren") {
-				addTone(sbn.getKey(), ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 30000);
-			}
+		Notification n = sbn.getNotification();
+		if (n == null)
+			return;
+		int action = getAction(packageName, n);
+		if (action == NotificationFilter.ACTION_UNCHANGED)
+			return;
+		if (0 != (action & NotificationFilter.ACTION_CANCEL)) {
+			cancelNotification(sbn.getKey());
 			return;
 		}
-    }
+		boolean resend = false;
+		if (0 != (action & NotificationFilter.ACTION_SIREN)) {
+			addTone(sbn.getKey(), ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 30000);
+		}
+		if (0 != (action & NotificationFilter.ACTION_NOVIBRATE)) {
+			n.defaults &= ~Notification.DEFAULT_VIBRATE;
+			n.vibrate = null;
+			resend = true;
+		}
+		if (0 != (action & NotificationFilter.ACTION_VIBRATE)) {
+			n.defaults |= Notification.DEFAULT_VIBRATE;
+			n.vibrate = null;
+			resend = true;
+		}
+		if (0 != (action & NotificationFilter.ACTION_SOUND)) {
+			n.defaults |= Notification.DEFAULT_SOUND;
+			resend = true;
+		}
+		if (0 != (action & NotificationFilter.ACTION_NOSOUND)) {
+			n.defaults &= ~Notification.DEFAULT_SOUND;
+			resend = true;
+		}
+		if (0 != (action & NotificationFilter.ACTION_LIGHTS)) {
+			n.defaults |= Notification.DEFAULT_LIGHTS;
+			resend = true;
+		}
+		if (0 != (action & NotificationFilter.ACTION_NOLIGHTS)) {
+			n.defaults &= ~Notification.DEFAULT_LIGHTS;
+			resend = true;
+		}
+		if (resend) {
+			cancelNotification(sbn.getKey());
+			NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+			synchronized(key) {
+				nm.notify(key++, n);
+			}
+		}
+	}
 
 	@Override
-    public void onNotificationRemoved(StatusBarNotification sbn) {
+	public void onNotificationRemoved(StatusBarNotification sbn) {
 		removeTone(sbn.getKey());
-    }
+	}
+
+	static class NotificationFilter {
+		static final int ACTION_SIREN = 0x1;
+		static final int ACTION_CANCEL = 0x2;
+		static final int ACTION_NOVIBRATE = 0x4;
+		static final int ACTION_VIBRATE = 0x8;
+		static final int ACTION_NOSOUND = 0x10;
+		static final int ACTION_SOUND = 0x20;
+		static final int ACTION_NOLIGHTS = 0x40;
+		static final int ACTION_LIGHTS = 0x80;
+		static final int ACTION_UNCHANGED = 0;
+
+		static final int MATCH_ALWAYS = 0;
+		static final int MATCH_SUBSTRING = 1;
+		static final int MATCH_NO_SUBSTRING = 2;
+
+		int matchMode;
+		String matchText;
+		int action;
+
+		NotificationFilter(int matchMode, String matchText, int action) {
+			this.matchMode = matchMode;
+			this.matchText = matchText;
+			this.action = action;
+		}
+
+		boolean match(String notificationText) {
+			switch(matchMode) {
+			case MATCH_ALWAYS:
+				return true;
+			case MATCH_SUBSTRING:
+				return notificationText.contains(matchText);
+			case MATCH_NO_SUBSTRING:
+				return !notificationText.contains(matchText);
+			default:
+				return false;
+			}
+		}
+	}
 }
