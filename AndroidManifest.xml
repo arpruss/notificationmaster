@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       android:versionCode="1"
       android:versionName="0.01" package="mobi.omegacentauri.nm">
+      
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application android:label="NotifyMaster">
         <activity android:name=".NotifyMasterActivity"
