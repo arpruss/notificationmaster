@@ -13,6 +13,7 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
+import android.os.Bundle;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 import android.util.Log;
@@ -31,6 +32,10 @@ public class NotifyFilterService extends NotificationListenerService {
 		filters.put("com.android.mms",
 				new NotificationFilter[] { 
 				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "arp:siren", NotificationFilter.ACTION_SIREN) 
+		});
+		filters.put("com.android.gm",
+				new NotificationFilter[] { 
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "^archived", NotificationFilter.ACTION_CANCEL) 
 		});
 		filters.put("com.htc.sense.mms",
 				new NotificationFilter[] { 
@@ -62,11 +67,33 @@ public class NotifyFilterService extends NotificationListenerService {
 		StringBuilder data = new StringBuilder();
 
 		NotificationFilter[] filterArray = filters.get(pkg);
-		if (filterArray == null)
+		if (filterArray == null) {
+//			filterArray = new NotificationFilter[0]; // for debugging
 			return NotificationFilter.ACTION_UNCHANGED;
+		}
 
 		if (n.tickerText != null) {
+			data.append("\n");
 			data.append(n.tickerText);
+		}
+
+		Bundle extras = n.extras;
+		CharSequence s = (CharSequence) extras.get(Notification.EXTRA_TITLE);
+		if (s != null) {
+			data.append("\n");
+			data.append(s.toString());
+		}
+		s = (CharSequence) extras.get(Notification.EXTRA_BIG_TEXT);
+		if (s != null) {
+			data.append("\n");
+			data.append(s.toString());
+		}
+		else {
+			s = (CharSequence) extras.get(Notification.EXTRA_TEXT);
+			if (s != null) {
+				data.append("\n");
+				data.append(s.toString());
+			}
 		}
 
 		RemoteViews v = n.contentView;
@@ -95,7 +122,7 @@ public class NotifyFilterService extends NotificationListenerService {
 							if (t == 9 || t == 10) {
 								Field value = actionClass.getDeclaredField("value");
 								value.setAccessible(true);
-								data.append(" ");
+								data.append("\n");
 								data.append(value.get(action).toString());
 							}
 						}
@@ -110,18 +137,19 @@ public class NotifyFilterService extends NotificationListenerService {
 		if (n.actions != null) {
 			for (Notification.Action action : n.actions) {
 				if (action.title != null) {
-					data.append(" ");
+					data.append("\n");
 					data.append(action.title);
 				}
 			}
 		}
+		data.append("\n");
 
-		String text = data.toString().replaceAll("\\s+", " ").toLowerCase();
-
+		String text = data.toString().replaceAll("[\\r\\n]+", "\n").replaceAll("[ \\t]+", " ");		
+		
 		for (NotificationFilter f : filterArray) 
 			if (f.match(text))
 				return f.action;
-
+		
 		return NotificationFilter.ACTION_UNCHANGED;
 	}	
 
@@ -244,9 +272,9 @@ public class NotifyFilterService extends NotificationListenerService {
 			case MATCH_ALWAYS:
 				return true;
 			case MATCH_SUBSTRING:
-				return notificationText.contains(matchText);
+				return notificationText.toLowerCase().replace("^", "\n").contains(matchText.replace("^", "\n"));
 			case MATCH_NO_SUBSTRING:
-				return !notificationText.contains(matchText);
+				return !notificationText.toLowerCase().replace("^", "\n").contains(matchText.replace("^", "\n"));
 			default:
 				return false;
 			}
