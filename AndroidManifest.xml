@@ -9,13 +9,22 @@
         <activity android:name=".Apps"
                   android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
                   android:launchMode="singleTask">
+<!--             <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>  -->
+        </activity>
+    
+        <activity android:name=".Rules"
+                  android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
+                  android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
     
-    <service android:name=".NotifyFilterService"
+        <service android:name=".NotifyFilterService"
                  android:label="NotifyMasterFilter"
                  android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
@@ -24,5 +33,5 @@
         </service>
     </application>
     
-    <uses-sdk android:minSdkVersion="21" />
+    <uses-sdk android:minSdkVersion="18" />
 </manifest>

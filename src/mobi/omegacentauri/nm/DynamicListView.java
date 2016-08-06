@@ -30,6 +30,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
@@ -37,6 +38,7 @@ import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -94,30 +96,47 @@ public class DynamicListView extends ListView {
 
     private boolean mIsWaitingForScrollFinish = false;
     private int mScrollState = OnScrollListener.SCROLL_STATE_IDLE;
+	private Context mContext;
 
     public DynamicListView(Context context) {
         super(context);
         init(context);
+        this.mContext = context;
     }
 
     public DynamicListView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         init(context);
+        this.mContext = context;
     }
 
     public DynamicListView(Context context, AttributeSet attrs) {
         super(context, attrs);
         init(context);
+        this.mContext = context;
     }
 
     public void init(Context context) {
         setOnItemLongClickListener(mOnItemLongClickListener);
+        setOnItemClickListener(mOnItemClickListener);
         setOnScrollListener(mScrollListener);
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+    	setChoiceMode(CHOICE_MODE_SINGLE);
         mSmoothScrollAmountAtEdge = (int)(SMOOTH_SCROLL_AMOUNT_AT_EDGE / metrics.density);
     }
 
-    /**
+    private AdapterView.OnItemClickListener mOnItemClickListener =
+    		new AdapterView.OnItemClickListener() {
+
+				@Override
+				public void onItemClick(AdapterView<?> parent, View view,
+						int position, long id) {
+					
+					Toast.makeText(mContext, (String)getAdapter().getItem(position), Toast.LENGTH_SHORT).show();					
+				}
+    };
+
+    		/**
      * Listens for long clicks on any items in the listview. When a cell has
      * been selected, the hover cell is created and set up.
      */
