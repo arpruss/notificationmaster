@@ -40,6 +40,7 @@ public class NotifyFilterService extends NotificationListenerService {
 		filters.put("com.htc.sense.mms",
 				new NotificationFilter[] { 
 				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "arp:siren", NotificationFilter.ACTION_SIREN),
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "arp:sound", NotificationFilter.ACTION_SOUND),
 				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "arp:novibrate", NotificationFilter.ACTION_NOVIBRATE),
 				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "arp:cancel", NotificationFilter.ACTION_CANCEL)
 		});
@@ -51,7 +52,11 @@ public class NotifyFilterService extends NotificationListenerService {
 				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "tornado", 
 						NotificationFilter.ACTION_UNCHANGED),
 				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "flood", 
-						NotificationFilter.ACTION_CANCEL)
+						NotificationFilter.ACTION_CANCEL),
+				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "heat advisory", 
+						NotificationFilter.ACTION_CANCEL),
+				new NotificationFilter(NotificationFilter.MATCH_ALWAYS, "", 
+						NotificationFilter.ACTION_NOSOUND),						
 		});
 		filters.put("jp.co.johospace.jorte",
 				new NotificationFilter[] { 
