@@ -56,7 +56,7 @@ public class NotifyFilterService extends NotificationListenerService {
 				new NotificationFilter(NotificationFilter.MATCH_SUBSTRING, "heat advisory", 
 						NotificationFilter.ACTION_CANCEL),
 				new NotificationFilter(NotificationFilter.MATCH_ALWAYS, "", 
-						NotificationFilter.ACTION_NOSOUND),						
+						NotificationFilter.ACTION_NOSOUND | NotificationFilter.ACTION_NOVIBRATE),						
 		});
 		filters.put("jp.co.johospace.jorte",
 				new NotificationFilter[] { 
@@ -197,9 +197,12 @@ public class NotifyFilterService extends NotificationListenerService {
 		if (n == null)
 			return;
 		int action = getAction(packageName, n);
-		if (action == NotificationFilter.ACTION_UNCHANGED)
+		if (action == NotificationFilter.ACTION_UNCHANGED) {
+			Log.v("nm", "notification unchanged");
 			return;
+		}
 		if (0 != (action & NotificationFilter.ACTION_CANCEL)) {
+			Log.v("nm", "notification canceled");
 			cancelNotification(sbn.getKey());
 			return;
 		}

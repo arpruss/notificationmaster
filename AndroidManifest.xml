@@ -4,7 +4,7 @@
       android:versionName="0.01" package="mobi.omegacentauri.nm">
       
     <uses-permission android:name="android.permission.VIBRATE" />
-
+ 
     <application android:label="NotifyMaster">
         <activity android:name=".Apps"
                   android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
@@ -33,5 +33,5 @@
         </service>
     </application>
     
-    <uses-sdk android:minSdkVersion="18" />
+    <uses-sdk android:minSdkVersion="21" />
 </manifest>
